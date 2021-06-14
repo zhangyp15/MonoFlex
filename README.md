@@ -1,6 +1,8 @@
 # MonoFlex
 Released code for Objects are Different: Flexible Monocular 3D Object Detection, CVPR21
 
+The README is still in progress :/
+
 ## Installation
 This repo is tested with Ubuntu 20.04, python=3.7, pytorch=1.4.0, cuda=10.1
 
