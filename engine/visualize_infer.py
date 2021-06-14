@@ -145,11 +145,14 @@ def show_image_with_boxes_test(image, output, target, visualize_preds):
 	plt.show()
 
 # heatmap and 3D detections
-def show_image_with_boxes(image, output, target, visualize_preds):
+def show_image_with_boxes(image, output, target, visualize_preds, vis_scores=None):
 	# output Tensor:
 	# clses, pred_alphas, pred_box2d, pred_dimensions, pred_locations, pred_rotys, scores
 	image = image.numpy().astype(np.uint8)
 	output = output.cpu().float().numpy()
+
+	if vis_scores is not None:
+		output[:, -1] = vis_scores.squeeze().cpu().float().numpy()
 	
 	# filter results with visualization threshold
 	vis_thresh = cfg.TEST.VISUALIZE_THRESHOLD

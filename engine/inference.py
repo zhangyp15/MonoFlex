@@ -47,7 +47,8 @@ def compute_on_dataset(model, data_loader, device, predict_folder, timer=None, v
             if dis_iou is not None:
                 for key in dis_iou: dis_ious[key] += dis_iou[key].tolist()
 
-            if vis: show_image_with_boxes(vis_target.get_field('ori_img'), output, vis_target, visualize_preds)
+            if vis: show_image_with_boxes(vis_target.get_field('ori_img'), output, vis_target, 
+                                    visualize_preds, vis_scores=eval_utils['vis_scores'])
 
             # generate txt files for predicted objects
             predict_txt = image_ids[0] + '.txt'
