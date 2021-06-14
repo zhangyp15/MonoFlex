@@ -1,0 +1,87 @@
+DATASETS:
+  DETECT_CLASSES: ("Car", "Pedestrian", "Cyclist")
+  TRAIN: ("kitti_train",)
+  TEST: ("kitti_train",)
+  TRAIN_SPLIT: "train"
+  TEST_SPLIT: "val"
+
+  USE_RIGHT_IMAGE: False
+  CONSIDER_OUTSIDE_OBJS: True
+  FILTER_ANNO_ENABLE: True
+  
+INPUT:
+  HEATMAP_CENTER: '3D'
+  AUG_PARAMS: [[0.5]]
+
+  ORIENTATION: 'multi-bin'
+  MODIFY_ALPHA: False
+  ORIENTATION_BIN_SIZE: 4
+  
+  APPROX_3D_CENTER: 'intersect'
+  ADJUST_BOUNDARY_HEATMAP: True
+  KEYPOINT_VISIBLE_MODIFY: True
+
+MODEL:
+  INPLACE_ABN: True
+  HEAD:
+    REGRESSION_HEADS: [['2d_dim'], ['3d_offset'], ['corner_offset'], ['corner_uncertainty'], ['3d_dim'], ['ori_cls', 'ori_offset'], ['depth'], ['depth_uncertainty']]
+    REGRESSION_CHANNELS: [[4, ], [2, ], [20], [3], [3, ], [8, 8], [1, ], [1, ]]
+
+    ENABLE_EDGE_FUSION: True
+    TRUNCATION_OUTPUT_FUSION: 'add'
+    TRUNCATION_CLS_RELU: False
+    TRUNCATION_OFFSET_RELU: False
+    EDGE_FUSION_NORM: 'BN'
+    TRUNCATION_OFFSET_LOSS: 'log'
+
+    BN_MOMENTUM: 0.1
+
+    USE_NORMALIZATION: "BN"
+    LOSS_TYPE: ["Penalty_Reduced_FocalLoss", "L1", "giou", "L1"]
+
+    MODIFY_INVALID_KEYPOINT_DEPTH: True
+
+    CORNER_LOSS_DEPTH: 'soft_combine'
+    LOSS_NAMES: ['hm_loss', 'bbox_loss', 'depth_loss', 'offset_loss', 'orien_loss', 'dims_loss', 'corner_loss', 'keypoint_loss', 'keypoint_depth_loss', 'trunc_offset_loss', 'weighted_avg_depth_loss']
+    LOSS_UNCERTAINTY: [True, True, False, True, True, True, True, True, False, True, True]
+    INIT_LOSS_WEIGHT: [1, 1, 1, 0.5, 1, 1, 0.2, 1.0, 0.2, 0.1, 0.2]
+    
+    CENTER_MODE: 'max'
+    HEATMAP_TYPE: 'centernet'
+    DIMENSION_REG: ['exp', True, False]
+    USE_UNCERTAINTY: False
+
+    DEPTH_MODE: 'inv_sigmoid'
+    OUTPUT_DEPTH: 'soft'
+    DIMENSION_WEIGHT: [1, 1, 1]
+
+    UNCERTAINTY_INIT: False
+
+  REDUCE_LOSS_NORM: True
+  USE_SYNC_BN: True
+
+SOLVER:
+  OPTIMIZER: 'adamw'
+  BASE_LR: 3e-4
+  WEIGHT_DECAY: 1e-5
+  LR_WARMUP: False
+  WARMUP_STEPS: 2000
+
+  # for 1 GPU
+  LR_DECAY: 0.1
+
+  EVAL_AND_SAVE_EPOCH: True
+  EVAL_EPOCH_INTERVAL: 2
+  SAVE_CHECKPOINT_EPOCH_INTERVAL: 2
+  MAX_EPOCHS: 90
+  DECAY_EPOCH_STEPS: [75, 83]
+
+  IMS_PER_BATCH: 8
+  EVAL_INTERVAL: 1000
+
+TEST:
+  UNCERTAINTY_AS_CONFIDENCE: True
+  DETECTIONS_THRESHOLD: 0.2
+  METRIC: ['R40']
+
+OUTPUT_DIR: "./output/toy_experiments"
