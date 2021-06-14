@@ -107,7 +107,8 @@ class PostProcessor(nn.Module):
 			result = scores.new_zeros(0, 14)
 			visualize_preds['keypoints'] = scores.new_zeros(0, 20)
 			visualize_preds['proj_center'] = scores.new_zeros(0, 2)
-			eval_utils = {'dis_ious': dis_ious, 'depth_errors': depth_errors, 'uncertainty_conf': scores.new_zeros(0), 'estimated_depth_error': scores.new_zeros(0)}
+			eval_utils = {'dis_ious': dis_ious, 'depth_errors': depth_errors, 'vis_scores': scores.new_zeros(0),
+					'uncertainty_conf': scores.new_zeros(0), 'estimated_depth_error': scores.new_zeros(0)}
 			
 			return result, eval_utils, visualize_preds
 
@@ -143,7 +144,6 @@ class PostProcessor(nn.Module):
 
 		if self.keypoint_depth_with_uncertainty:
 			pred_keypoint_uncertainty = pred_regression_pois[:, self.key2channel('corner_uncertainty')].exp()
-
 
 		estimated_depth_error = None
 
