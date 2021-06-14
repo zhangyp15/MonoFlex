@@ -38,20 +38,21 @@ Please download [KITTI dataset](http://www.cvlibs.net/datasets/kitti/eval_object
 #ROOT
   |data/
     |KITTI/
-      |ImageSets/ [already provided in this repo]
       |object/			
         |training/
           |calib/
           |image_2/
           |label/
+          |ImageSets/
         |testing/
           |calib/
           |image_2/
+          |ImageSets/
 ```
 
 Then modify the paths in config/paths_catalog.py according to your data path.
 
-### Training & Evaluation
+## Training & Evaluation
 
 Training with one GPU: (TODO: multi-GPU training will be further tested)
 
@@ -67,6 +68,20 @@ CUDA_VISIBLE_DEVICES=0 python tools/plain_train_net.py --config runs/monoflex.ya
 
 You can also specify --vis when evaluation to visualize the predicted heatmap and 3D bounding boxes.
 
+## Citation
+
+If you find our work useful in your research, please consider citing:
+
+```latex
+@InProceedings{MonoFlex,
+    author    = {Zhang, Yunpeng and Lu, Jiwen and Zhou, Jie},
+    title     = {Objects Are Different: Flexible Monocular 3D Object Detection},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month     = {June},
+    year      = {2021},
+    pages     = {3289-3298}
+}
+```
 
 ## Acknowlegment
 
