@@ -1,5 +1,9 @@
 # MonoFlex
-Released code for Objects are Different: Flexible Monocular 3D Object Detection, CVPR21
+Released code for Objects are Different: Flexible Monocular 3D Object Detection, CVPR21.
+
+
+**Work in progress.**
+
 
 ## Installation
 This repo is tested with Ubuntu 20.04, python==3.7, pytorch==1.4.0 and cuda==10.1
@@ -55,7 +59,7 @@ Training with one GPU. (TODO: The multi-GPU training will be further tested.)
 CUDA_VISIBLE_DEVICES=0 python tools/plain_train_net.py --batch_size 8 --config runs/monoflex.yaml --output output/exp
 ```
 
-The model will be evaluated every two epochs (can be adjusted in the CONFIG) during training and you can also evaluate a checkpoint with
+The model will be evaluated periodically (can be adjusted in the CONFIG) during training and you can also evaluate a checkpoint with
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python tools/plain_train_net.py --config runs/monoflex.yaml --ckpt YOUR_CKPT  --eval
