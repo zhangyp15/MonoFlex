@@ -22,6 +22,8 @@ INPUT:
   KEYPOINT_VISIBLE_MODIFY: True
 
 MODEL:
+  BACKBONE:
+    CONV_BODY: "dla34"
   INPLACE_ABN: True
   HEAD:
     REGRESSION_HEADS: [['2d_dim'], ['3d_offset'], ['corner_offset'], ['corner_uncertainty'], ['3d_dim'], ['ori_cls', 'ori_offset'], ['depth'], ['depth_uncertainty']]

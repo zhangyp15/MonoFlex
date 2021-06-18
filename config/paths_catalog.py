@@ -1,13 +1,13 @@
 import os
 
 class DatasetCatalog():
-    DATA_DIR = "/opt/data1/zyp/"
+    DATA_DIR = "/root/SMOKE/datasets"
     DATASETS = {
         "kitti_train": {
-            "root": "kitti/object/training/",
+            "root": "kitti/training/",
         },
         "kitti_test": {
-            "root": "kitti/object/testing/",
+            "root": "kitti/testing/",
         },
 
     }

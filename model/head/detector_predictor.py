@@ -121,7 +121,7 @@ class _predictor(nn.Module):
 
     def forward(self, features, targets):
         b, c, h, w = features.shape
-
+        
         # output classification
         feature_cls = self.class_head[:-1](features)
         output_cls = self.class_head[-1](feature_cls)

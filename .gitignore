@@ -1,0 +1,14 @@
+.so
+.pyc
+.out
+.pyc
+nohup.out
+model/backbone/DCNv2/
+monoflex.egg-info/
+checkpoints/
+datasets/
+build/
+output/
+_ext.*
+__pycache__/
+model/layers/__pycache__/

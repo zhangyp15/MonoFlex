@@ -14,8 +14,9 @@ __all__ = ["default_argument_parser", "default_setup"]
 
 def default_argument_parser():
     parser = argparse.ArgumentParser(description="Detectron2 Training")
-    parser.add_argument("--config", dest='config_file', default="runs/baseline_v0.yaml",
+    parser.add_argument("--config", dest='config_file', default="runs/monoflex.yaml",
                         metavar="FILE", help="path to config file")
+    parser.add_argument("--backbone", type=str, default="dla34", help="name of backbone")
 
     parser.add_argument("--eval", dest='eval_only', action="store_true", help="perform evaluation only")
     parser.add_argument("--eval_iou", action="store_true", help="evaluate disentangling IoU")

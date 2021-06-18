@@ -90,6 +90,9 @@ def setup(args):
     cfg.TEST.EVAL_DIS_IOUS = args.eval_iou
     cfg.TEST.EVAL_DEPTH = args.eval_depth 
     
+    cfg.MODEL.BACKBONE.CONV_BODY = args.backbone
+    print("Using Backone: ", cfg.MODEL.BACKBONE.CONV_BODY)
+    
     if args.vis_thre > 0:
         cfg.TEST.VISUALIZE_THRESHOLD = args.vis_thre 
     
