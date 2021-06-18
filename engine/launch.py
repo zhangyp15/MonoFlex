@@ -37,9 +37,6 @@ def launch(main_func,
         args (tuple): arguments passed to main_func
     """
 
-    import os
-    os.environ["CUDA_VISIBLE_DEVICES"] = ", ".join(args[0].gpu)
-
     world_size = num_machines * num_gpus_per_machine
     if world_size > 1:
         # https://github.com/pytorch/pytorch/pull/14391

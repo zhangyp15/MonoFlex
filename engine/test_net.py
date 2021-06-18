@@ -21,7 +21,7 @@ def run_test(cfg, model, vis, eval_score_iou, eval_all_depths=True):
 
     inference_fnc = inference_all_depths if eval_all_depths else inference
     for output_folder, dataset_name, data_loader_val in zip(output_folders, dataset_names, data_loaders_val):
-        result_dict, dis_ious = inference_fnc(
+        result_dict, result_str, dis_ious = inference_fnc(
             model,
             data_loaders_val,
             dataset_name=dataset_name,

@@ -10,7 +10,8 @@ import matplotlib.colors as mplc
 import matplotlib.figure as mplfigure
 import pycocotools.mask as mask_util
 import torch
-from fvcore.common.file_io import PathManager
+# from fvcore.common.file_io import PathManager
+from iopath.common.file_io import PathManager
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from PIL import Image
 

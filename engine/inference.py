@@ -62,6 +62,71 @@ def compute_on_dataset(model, data_loader, device, predict_folder, timer=None, v
 
     return dis_ious
 
+def inference(
+        model,
+        data_loader,
+        dataset_name,
+        eval_types=("detections",),
+        device="cuda",
+        output_folder=None,
+        metrics=['R40'],
+        vis=False,
+        eval_score_iou=False,
+):
+    device = torch.device(device)
+    num_devices = comm.get_world_size()
+    logger = logging.getLogger("monoflex.inference")
+    dataset = data_loader.dataset
+    logger.info("Start evaluation on {} dataset({} images).".format(dataset_name, len(dataset)))
+    predict_folder = os.path.join(output_folder, 'data')
+    os.makedirs(predict_folder, exist_ok=True)
+
+    total_timer = Timer()
+    inference_timer = Timer()
+    total_timer.tic()
+
+    dis_ious = compute_on_dataset(model, data_loader, device, predict_folder, 
+                                inference_timer, vis, eval_score_iou)
+    comm.synchronize()
+
+    for key, value in dis_ious.items():
+        logger.info("{}, MEAN IOU = {:.4f}".format(key, value))
+
+    total_time = total_timer.toc()
+    total_time_str = get_time_str(total_time)
+    logger.info(
+        "Total run time: {} ({} s / img per device, on {} devices)".format(
+            total_time_str, total_time * num_devices / len(dataset), num_devices
+        )
+    )
+    total_infer_time = get_time_str(inference_timer.total_time)
+    logger.info(
+        "Model inference time: {} ({} s / img per device, on {} devices)".format(
+            total_infer_time,
+            inference_timer.total_time * num_devices / len(dataset),
+            num_devices,
+        )
+    )
+    if not comm.is_main_process():
+        return None, None, None
+
+    logger.info('Finishing generating predictions, start evaluating ...')
+    ret_dicts = []
+    
+    for metric in metrics:
+        result, ret_dict = evaluate_python(label_path=dataset.label_dir, 
+                                        result_path=predict_folder,
+                                        label_split_file=dataset.imageset_txt,
+                                        current_class=dataset.classes,
+                                        metric=metric)
+
+        logger.info('metric = {}'.format(metric))
+        logger.info('\n' + result)
+
+        ret_dicts.append(ret_dict)
+
+    return ret_dicts, result, dis_ious
+
 def inference_all_depths(
         model,
         data_loader,
@@ -129,68 +194,4 @@ def inference_all_depths(
             sort_str = join_str.join([eval_depth_methods[idx] for idx in sort_idxs])
             logger.info('Cls {}, Thresh {}, Sort: '.format(cls, thresh) + sort_str)
 
-    return None, None
-
-def inference(
-        model,
-        data_loader,
-        dataset_name,
-        eval_types=("detections",),
-        device="cuda",
-        output_folder=None,
-        metrics=['R40'],
-        vis=False,
-        eval_score_iou=False,
-):
-    device = torch.device(device)
-    num_devices = comm.get_world_size()
-    logger = logging.getLogger("monoflex.inference")
-    dataset = data_loader.dataset
-    logger.info("Start evaluation on {} dataset({} images).".format(dataset_name, len(dataset)))
-    predict_folder = os.path.join(output_folder, 'data')
-    os.makedirs(predict_folder, exist_ok=True)
-
-    total_timer = Timer()
-    inference_timer = Timer()
-    total_timer.tic()
-
-    dis_ious = compute_on_dataset(model, data_loader, device, predict_folder, 
-                                inference_timer, vis, eval_score_iou)
-    comm.synchronize()
-
-    for key, value in dis_ious.items():
-        logger.info("{}, MEAN IOU = {:.4f}".format(key, value))
-
-    total_time = total_timer.toc()
-    total_time_str = get_time_str(total_time)
-    logger.info(
-        "Total run time: {} ({} s / img per device, on {} devices)".format(
-            total_time_str, total_time * num_devices / len(dataset), num_devices
-        )
-    )
-    total_infer_time = get_time_str(inference_timer.total_time)
-    logger.info(
-        "Model inference time: {} ({} s / img per device, on {} devices)".format(
-            total_infer_time,
-            inference_timer.total_time * num_devices / len(dataset),
-            num_devices,
-        )
-    )
-    if not comm.is_main_process():
-        return None, None
-
-    logger.info('Finishing generating predictions, start evaluating ...')
-    ret_dicts = []
-    for metric in metrics:
-        result, ret_dict = evaluate_python(label_path=dataset.label_dir, 
-                                        result_path=predict_folder,
-                                        label_split_file=dataset.imageset_txt,
-                                        current_class=dataset.classes,
-                                        metric=metric)
-
-        logger.info('metric = {}'.format(metric))
-        logger.info('\n' + result)
-
-        ret_dicts.append(ret_dict)
-
-    return ret_dicts, dis_ious
+    return None, None, None

@@ -3,6 +3,8 @@ import logging
 import pdb
 import os
 import datetime
+import warnings
+warnings.filterwarnings("ignore")
 
 from config import cfg
 from data import make_data_loader
@@ -107,6 +109,10 @@ def setup(args):
 
 def main(args):
     cfg = setup(args)
+
+    distributed = comm.get_world_size() > 1
+    if not distributed: cfg.MODEL.USE_SYNC_BN = False
+
     model = KeypointDetector(cfg)
     device = torch.device(cfg.MODEL.DEVICE)
     model.to(device)
@@ -119,8 +125,6 @@ def main(args):
         _ = checkpointer.load(ckpt, use_latest=args.ckpt is None)
 
         return run_test(cfg, checkpointer.model, vis=args.vis, eval_score_iou=args.eval_score_iou, eval_all_depths=args.eval_all_depths)
-
-    distributed = comm.get_world_size() > 1
 
     if distributed:
         # convert BN to SyncBN
@@ -136,10 +140,6 @@ def main(args):
 
 if __name__ == '__main__':
     args = default_argument_parser().parse_args()
-    import os
-    os.environ["CUDA_VISIBLE_DEVICES"] = ", ".join(args.gpu)
-    if args.num_gpus is None:
-        args.num_gpus = len(args.gpu)
     
     print("Command Line Args:", args)
 

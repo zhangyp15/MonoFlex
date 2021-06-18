@@ -29,9 +29,12 @@ class Checkpointer():
 
     def save(self, name, **kwargs):
         data = {}
+        
         data["model"] = self.model.state_dict()
+        
         if self.optimizer is not None:
             data["optimizer"] = self.optimizer.state_dict()
+        
         if self.scheduler is not None and hasattr(self.scheduler, "state_dict"):
             data["scheduler"] = self.scheduler.state_dict()
         
