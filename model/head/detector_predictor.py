@@ -14,7 +14,7 @@ from model.make_layers import group_norm, _fill_fc_weights
 from model.layers.utils import select_point_of_interest
 from model.backbone.DCNv2.dcn_v2 import DCNv2
 
-from inplace_abn import InPlaceABN
+from inplace_abn import InPlaceABN, InPlaceABNSync
 
 @registry.PREDICTOR.register("Base_Predictor")
 class _predictor(nn.Module):
@@ -27,7 +27,6 @@ class _predictor(nn.Module):
         self.regression_channel_cfg = cfg.MODEL.HEAD.REGRESSION_CHANNELS
         self.output_width = cfg.INPUT.WIDTH_TRAIN // cfg.MODEL.BACKBONE.DOWN_RATIO
         self.output_height = cfg.INPUT.HEIGHT_TRAIN // cfg.MODEL.BACKBONE.DOWN_RATIO
-        
         self.head_conv = cfg.MODEL.HEAD.NUM_CHANNEL
 
         use_norm = cfg.MODEL.HEAD.USE_NORMALIZATION
@@ -36,9 +35,13 @@ class _predictor(nn.Module):
         else: norm_func = nn.Identity
 
         # the inplace-abn is applied to reduce GPU memory and slightly increase the batch-size
-        self.use_inplace_abn = cfg.MODEL.INPLACE_ABN
         self.bn_momentum = cfg.MODEL.HEAD.BN_MOMENTUM
-        self.abn_activision = 'leaky_relu'
+        self.sync_bn = cfg.MODEL.USE_SYNC_BN
+        self.use_inplace_abn = cfg.MODEL.INPLACE_ABN
+        
+        if self.use_inplace_abn:
+            self.abn_activision = 'leaky_relu'
+            abn_function = InPlaceABNSync if self.sync_bn else InPlaceABN
 
         ###########################################
         ###############  Cls Heads ################
@@ -47,7 +50,7 @@ class _predictor(nn.Module):
         if self.use_inplace_abn:
             self.class_head = nn.Sequential(
                 nn.Conv2d(in_channels, self.head_conv, kernel_size=3, padding=1, bias=False),
-                InPlaceABN(self.head_conv, momentum=self.bn_momentum, activation=self.abn_activision),
+                abn_function(self.head_conv, momentum=self.bn_momentum, activation=self.abn_activision),
                 nn.Conv2d(self.head_conv, classes, kernel_size=1, padding=1 // 2, bias=True),
             )
         else:
@@ -71,7 +74,7 @@ class _predictor(nn.Module):
         for idx, regress_head_key in enumerate(self.regression_head_cfg):
             if self.use_inplace_abn:
                 feat_layer = nn.Sequential(nn.Conv2d(in_channels, self.head_conv, kernel_size=3, padding=1, bias=False),
-                                    InPlaceABN(self.head_conv, momentum=self.bn_momentum, activation=self.abn_activision))
+                                    abn_function(self.head_conv, momentum=self.bn_momentum, activation=self.abn_activision))
             else:
                 feat_layer = nn.Sequential(nn.Conv2d(in_channels, self.head_conv, kernel_size=3, padding=1, bias=False),
                                     norm_func(self.head_conv, momentum=self.bn_momentum), nn.ReLU(inplace=True))
@@ -86,7 +89,7 @@ class _predictor(nn.Module):
 
                 if key.find('uncertainty') >= 0 and cfg.MODEL.HEAD.UNCERTAINTY_INIT:
                     # default gain = 1
-                    torch.nn.init.xavier_normal_(output_head.weight, gain=1e-4)
+                    torch.nn.init.xavier_normal_(output_head.weight, gain=0.1)
                 
                 # since the edge fusion is applied to the offset branch, we should save the index of this branch
                 if key == '3d_offset': self.offset_index = [idx, key_index]
