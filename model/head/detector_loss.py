@@ -134,9 +134,7 @@ class Loss_Computation():
 		target_bboxes_height = target_bboxes_2D[:, 3] - target_bboxes_2D[:, 1]
 		target_bboxes_width = target_bboxes_2D[:, 2] - target_bboxes_2D[:, 0]
 
-		target_regression_2D = torch.cat((valid_targets_bbox_points - target_bboxes_2D[:, :2], 
-									target_bboxes_2D[:, 2:] - valid_targets_bbox_points), dim=1)
-		
+		target_regression_2D = torch.cat((valid_targets_bbox_points - target_bboxes_2D[:, :2], target_bboxes_2D[:, 2:] - valid_targets_bbox_points), dim=1)
 		mask_regression_2D = (target_bboxes_height > 0) & (target_bboxes_width > 0)
 		target_regression_2D = target_regression_2D[mask_regression_2D]
 
