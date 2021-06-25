@@ -90,6 +90,7 @@ def do_train(
 	end = time.time()
 
 	default_depth_method = cfg.MODEL.HEAD.OUTPUT_DEPTH
+	grad_norm_clip = cfg.SOLVER.GRAD_NORM_CLIP
 
 	if comm.get_local_rank() == 0:
 		writer = SummaryWriter(os.path.join(cfg.OUTPUT_DIR, 'writer/{}/'.format(cfg.START_TIME)))
@@ -114,7 +115,9 @@ def do_train(
 		
 		optimizer.zero_grad()
 		losses.backward()
-		# clip_grad_norm_(model.parameters(), cfg.SOLVER.GRAD_NORM_CLIP)
+		
+		if grad_norm_clip > 0: clip_grad_norm_(model.parameters(), grad_norm_clip)
+
 		optimizer.step()
 
 		if iteration < warmup_iters:

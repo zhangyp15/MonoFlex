@@ -187,8 +187,14 @@ class Loss_Computation():
 
 		# predict the uncertainty of depth regression
 		if self.depth_with_uncertainty:
-			preds['depth_uncertainty'] = torch.clamp(pred_regression_pois_3D[:, self.key2channel('depth_uncertainty')].squeeze(-1), 
-													min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+			preds['depth_uncertainty'] = pred_regression_pois_3D[:, self.key2channel('depth_uncertainty')].squeeze(-1)
+			
+			if self.uncertainty_range is not None:
+				preds['depth_uncertainty'] = torch.clamp(preds['depth_uncertainty'], min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+
+			# else:
+			# 	print('depth_uncertainty: {:.2f} +/- {:.2f}'.format(
+			# 		preds['depth_uncertainty'].mean().item(), preds['depth_uncertainty'].std().item()))
 
 		# predict the keypoints
 		if self.compute_keypoint_corner:
@@ -213,8 +219,14 @@ class Loss_Computation():
 
 		# predict the uncertainties of the solved depths from groups of keypoints
 		if self.corner_with_uncertainty:
-			preds['corner_offset_uncertainty'] = torch.clamp(pred_regression_pois_3D[:, self.key2channel('corner_uncertainty')], 
-												min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+			preds['corner_offset_uncertainty'] = pred_regression_pois_3D[:, self.key2channel('corner_uncertainty')]
+
+			if self.uncertainty_range is not None:
+				preds['corner_offset_uncertainty'] = torch.clamp(preds['corner_offset_uncertainty'], min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+
+			# else:
+			# 	print('keypoint depth uncertainty: {:.2f} +/- {:.2f}'.format(
+			# 		preds['corner_offset_uncertainty'].mean().item(), preds['corner_offset_uncertainty'].std().item()))
 
 		# compute the corners of the predicted 3D bounding boxes for the corner loss
 		if self.corner_loss_depth == 'direct':
