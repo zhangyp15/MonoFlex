@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import leastsq
 from PIL import Image
 import pdb
+import yaml
 
 TOP_Y_MIN = -30
 TOP_Y_MAX = +30
@@ -190,24 +191,25 @@ class Calibration(object):
         TODO(rqi): do matrix multiplication only once for each projection.
     """
 
-    def __init__(self, calib_filepath, from_video=False, use_right_cam=False):
-        if from_video:
-            calibs = self.read_calib_from_video(calib_filepath)
-        else:
-            calibs = self.read_calib_file(calib_filepath)
-        
+    def __init__(self, yaml_path, from_video=False, use_right_cam=False):
+        # if from_video:
+        #     calibs = self.read_calib_from_video(calib_filepath)
+        # else:
+        #     calibs = self.read_calib_file(calib_filepath)
+
+
         # Projection matrix from rect camera coord to image coord
-        self.P = calibs["P3"] if use_right_cam else calibs["P2"]
-        self.P = np.reshape(self.P, [3, 4])
+        self.P = self.read_calib_from_yaml(yaml_path)
+        # self.P = np.reshape(self.P, [3, 4])
         
-        # Rigid transform from Velodyne coord to reference camera coord
-        self.V2C = calibs["Tr_velo_to_cam"]
-        self.V2C = np.reshape(self.V2C, [3, 4])
-        self.C2V = inverse_rigid_trans(self.V2C)
-        
-        # Rotation from reference camera coord to rect camera coord
-        self.R0 = calibs["R0_rect"]
-        self.R0 = np.reshape(self.R0, [3, 3])
+        # # Rigid transform from Velodyne coord to reference camera coord
+        # self.V2C = calibs["Tr_velo_to_cam"]
+        # self.V2C = np.reshape(self.V2C, [3, 4])
+        # self.C2V = inverse_rigid_trans(self.V2C)
+        #
+        # # Rotation from reference camera coord to rect camera coord
+        # self.R0 = calibs["R0_rect"]
+        # self.R0 = np.reshape(self.R0, [3, 3])
 
         # Camera intrinsics and extrinsics
         self.c_u = self.P[0, 2]
@@ -216,6 +218,18 @@ class Calibration(object):
         self.f_v = self.P[1, 1]
         self.b_x = self.P[0, 3] / (-self.f_u)  # relative
         self.b_y = self.P[1, 3] / (-self.f_v)
+
+
+    def read_calib_from_yaml(self, yaml_path):
+        f = open(yaml_path, 'r', encoding='utf-8')
+        cont = f.read()
+        x = yaml.load(cont)
+
+        P = x['K']
+        P = np.reshape(P, (3, 3))
+        newP = np.zeros((3, 4), dtype=P.dtype)
+        newP[0:3, 0:3] = P
+        return newP
 
     def read_calib_file(self, filepath):
         """ Read in a calibration file and parse into a dictionary.
@@ -255,6 +269,33 @@ class Calibration(object):
         data["R0_rect"] = cam2cam["R_rect_00"]
         data["P2"] = cam2cam["P_rect_02"]
         return data
+
+    # change cx cy
+    def changeNewCenter(self, center_list, transMat):
+        center_list.append(1.0)
+        newCoord = np.matmul(transMat, np.array(center_list))
+        return newCoord
+    # change fx fy
+    def changeFxFy(self, transMat):
+        self.P[0, 0] = self.P[0, 0] * transMat[0, 0]
+        self.P[1, 1] = self.P[1, 1] * transMat[1, 1]
+
+    # according to affine matrix modify cx cy fx fy
+    def matAndUpdate(self, transMat):
+        
+        center_list = [self.c_u, self.c_v]
+        newCenter = self.changeNewCenter(center_list, transMat)
+        self.P[0, 2] = newCenter[0]
+        self.P[1, 2] = newCenter[1]
+        # change fx fy
+        self.changeFxFy(transMat)
+        # Camera intrinsics and extrinsics
+        self.c_u = self.P[0, 2]
+        self.c_v = self.P[1, 2]
+        self.f_u = self.P[0, 0]
+        self.f_v = self.P[1, 1]
+        self.b_x = self.P[0, 3] / (-self.f_u)  # relative
+        self.b_y = self.P[1, 3] / (-self.f_v)
 
     def cart2hom(self, pts_3d):
         """ Input: nx3 points in Cartesian

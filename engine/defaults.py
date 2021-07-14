@@ -1,5 +1,6 @@
 import argparse
 import os
+from numpy.core.numeric import True_
 
 import torch
 
@@ -14,10 +15,10 @@ __all__ = ["default_argument_parser", "default_setup"]
 
 def default_argument_parser():
     parser = argparse.ArgumentParser(description="Detectron2 Training")
-    parser.add_argument("--config", dest='config_file', default="runs/baseline_v0.yaml",
+    parser.add_argument("--config", dest='config_file', default="runs/monoflex.yaml",
                         metavar="FILE", help="path to config file")
 
-    parser.add_argument("--eval", dest='eval_only', action="store_true", help="perform evaluation only")
+    parser.add_argument("--eval", dest='eval_only',default=True, action="store_true", help="perform evaluation only")
     parser.add_argument("--eval_iou", action="store_true", help="evaluate disentangling IoU")
     parser.add_argument("--eval_depth", action="store_true", help="evaluate depth errors")
     parser.add_argument("--eval_all_depths", action="store_true")
@@ -25,12 +26,12 @@ def default_argument_parser():
     parser.add_argument("--eval_score_iou", action="store_true", 
                             help="evaluate the relationship between scores and IoU")
 
-    parser.add_argument("--test", action="store_true", help="test mode")
-    parser.add_argument("--vis", action="store_true", help="visualize when evaluating")
+    parser.add_argument("--test", action="store_true",default=True, help="test mode")
+    parser.add_argument("--vis", action="store_true",default=True, help="visualize when evaluating")
     parser.add_argument(
         "--ckpt",
         help="The path to the checkpoint for test, default is the latest checkpoint.",
-        default=None,
+        default='model_checkpoint-23-17-14.pth',
     )
     
     parser.add_argument("--num_gpus", type=int, default=1, help="number of gpu")

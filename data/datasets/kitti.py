@@ -19,6 +19,8 @@ from model.heatmap_coder import (
 	draw_umich_gaussian_2D,
 )
 
+import cv2
+
 from structures.params_3d import ParamsList
 from data.augmentations import get_composed_augmentations
 from .kitti_utils import Calibration, read_label, approx_proj_center, refresh_attributes, show_heatmap, show_image_with_boxes, show_edge_heatmap
@@ -33,6 +35,7 @@ class KITTIDataset(Dataset):
 		self.image_right_dir = os.path.join(root, "image_3")
 		self.label_dir = os.path.join(root, "label_2")
 		self.calib_dir = os.path.join(root, "calib")
+		self.yaml_path = cfg.DATASETS.YAML_NAME 
 
 		self.split = cfg.DATASETS.TRAIN_SPLIT if is_train else cfg.DATASETS.TEST_SPLIT
 		self.is_train = is_train
@@ -114,7 +117,8 @@ class KITTIDataset(Dataset):
 		return img
 
 	def get_calibration(self, idx, use_right_cam=False):
-		calib_filename = os.path.join(self.calib_dir, self.label_files[idx])
+		#calib_filename = os.path.join(self.calib_dir, self.label_files[idx])
+		calib_filename = os.path.join(self.calib_dir, self.yaml_path)
 		return Calibration(calib_filename, use_right_cam=use_right_cam)
 
 	def get_label_objects(self, idx):
@@ -234,7 +238,7 @@ class KITTIDataset(Dataset):
 			idx = idx % self.num_samples
 			img = self.get_right_image(idx)
 			calib = self.get_calibration(idx, use_right_cam=True)
-			objs = None if self.split == 'test' else self.get_label_objects(idx)
+			objs = [] if self.split == 'test' else self.get_label_objects(idx)
 
 			use_right_img = True
 			# generate the bboxes for right color image
@@ -254,7 +258,7 @@ class KITTIDataset(Dataset):
 			# utilize left color image
 			img = self.get_image(idx)
 			calib = self.get_calibration(idx)
-			objs = None if self.split == 'test' else self.get_label_objects(idx)
+			objs = [] if self.split == 'test' else self.get_label_objects(idx)
 
 			use_right_img = False
 
@@ -265,9 +269,82 @@ class KITTIDataset(Dataset):
 		if self.augmentation is not None:
 			img, objs, calib = self.augmentation(img, objs, calib)
 
+		from skimage import transform as trans
+
+		def get_transfrom_matrix(center_scale, output_size):
+			center, scale = center_scale[0], center_scale[1]
+			# todo: further add rot and shift here.
+			src_w = scale[0]
+			dst_w = output_size[0]
+			dst_h = output_size[1]
+
+			src_dir = np.array([0, src_w * -0.5])
+			dst_dir = np.array([0, dst_w * -0.5])
+
+			src = np.zeros((3, 2), dtype=np.float32)
+			dst = np.zeros((3, 2), dtype=np.float32)
+			src[0, :] = center
+			src[1, :] = center + src_dir
+			dst[0, :] = np.array([dst_w * 0.5, dst_h * 0.5])
+			dst[1, :] = np.array([dst_w * 0.5, dst_h * 0.5]) + dst_dir
+
+			src[2, :] = get_3rd_point(src[0, :], src[1, :])
+			dst[2, :] = get_3rd_point(dst[0, :], dst[1, :])
+
+			affine_cv = cv2.getAffineTransform(src,dst)
+            #img=  cv2.warpAffine(img, M, (cols, rows))
+			get_matrix = trans.estimate_transform("affine", src, dst)
+			matrix = get_matrix.params
+
+			return matrix.astype(np.float32),affine_cv
+
+		def affine_transform(point, matrix):
+			point_exd = np.array([point[0], point[1], 1.])
+			new_point = np.matmul(matrix, point_exd)
+
+			return new_point[:2]
+
+		def get_3rd_point(point_a, point_b):
+			d = point_a - point_b
+			point_c = point_b + np.array([-d[1], d[0]])
+			return point_c
+
+		center = np.array([i / 2 for i in img.size], dtype=np.float32)
+		size = np.array([i for i in img.size], dtype=np.float32)
+
+		"""
+        resize, horizontal flip, and affine augmentation are performed here.
+        since it is complicated to compute heatmap w.r.t transform.
+        """
+		center_size = [center, size]
+		trans_affine,affine_opencv = get_transfrom_matrix(
+			center_size,
+			[self.input_width, self.input_height]
+		)
+		img =cv2.warpAffine(np.array(img), affine_opencv, (self.input_width, self.input_height))
+		#cv2.imwrite("/home/lipengcheng/results/neolix_test/affine_opencv.png",im2)
+		# compute cx cy: origin cx,cy 不一定为中心点 拿K里面的那个
+		# new cx cy 原始中心点在新affine变换后的位置
+		# fx fy: height 变换了 fx * origin width = fxnew * new width
+		# fy 1)是否为fx fy等比例变换 2)拿到affine变换后四个角点，在逆回原图 知道一一对应地方，求fy is ok
+		# trans_affine_inv = np.linalg.inv(trans_affine)
+		# img = img.transform(
+		# 	(self.input_width, self.input_height),
+		# 	method=Image.AFFINE,
+		# 	data=trans_affine_inv.flatten()[:6],
+		# 	resample=Image.BILINEAR,
+		# )
+
+		calib.matAndUpdate(trans_affine)
+
+		img = np.array(img)
+		#img = cv2.resize(img, (self.input_width, self.input_height), interpolation=cv2.INTER_NEAREST)
+		#cv2.imwrite("/home/lipengcheng/results/neolix_test/affine.png",img)
+		print("down sample: ", self.down_ratio)
 		# pad image
-		img_before_aug_pad = np.array(img).copy()
-		img_w, img_h = img.size
+		img_before_aug_pad = img.copy()
+
+		img_w, img_h = img.shape[1], img.shape[0]
 		img, pad_size = self.pad_image(img)
 		# for training visualize, use the padded images
 		ori_img = np.array(img).copy() if self.is_train else img_before_aug_pad

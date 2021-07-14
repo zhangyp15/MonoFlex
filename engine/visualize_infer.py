@@ -13,7 +13,8 @@ from config import TYPE_ID_CONVERSION
 from shapely.geometry import Polygon
 from config import cfg
 from utils.visualizer import Visualizer
-from data.datasets.kitti_utils import draw_projected_box3d, draw_box3d_on_top, init_bev_image, draw_bev_box3d
+from data.datasets.kitti_utils import draw_projected_box3d, \
+	draw_box3d_on_top, init_bev_image, draw_bev_box3d
 
 keypoint_colors = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156], 
 				[190, 153, 153], [153, 153, 153], [250, 170, 30], [220, 220, 0], 
@@ -145,7 +146,7 @@ def show_image_with_boxes_test(image, output, target, visualize_preds):
 	plt.show()
 
 # heatmap and 3D detections
-def show_image_with_boxes(image, output, target, visualize_preds, vis_scores=None):
+def show_image_with_boxes(image, output, target, visualize_preds, image_ids, vis_scores=None):
 	# output Tensor:
 	# clses, pred_alphas, pred_box2d, pred_dimensions, pred_locations, pred_rotys, scores
 	image = image.numpy().astype(np.uint8)
@@ -173,16 +174,18 @@ def show_image_with_boxes(image, output, target, visualize_preds, vis_scores=Non
 	# ground-truth
 	calib = target.get_field('calib')
 	pad_size = target.get_field('pad_size')
-	valid_mask = target.get_field('reg_mask').bool()
-	trunc_mask = target.get_field('trunc_mask').bool()
-	num_gt = valid_mask.sum()
-	gt_clses = target.get_field('cls_ids')[valid_mask]
-	gt_boxes = target.get_field('gt_bboxes')[valid_mask]
-	gt_locs = target.get_field('locations')[valid_mask]
-	gt_dims = target.get_field('dimensions')[valid_mask]
-	gt_rotys = target.get_field('rotys')[valid_mask]
+	split = "test"
+	if split != "test":
+		valid_mask = target.get_field('reg_mask').bool()
+		trunc_mask = target.get_field('trunc_mask').bool()
+		num_gt = valid_mask.sum()
+		gt_clses = target.get_field('cls_ids')[valid_mask]
+		gt_boxes = target.get_field('gt_bboxes')[valid_mask]
+		gt_locs = target.get_field('locations')[valid_mask]
+		gt_dims = target.get_field('dimensions')[valid_mask]
+		gt_rotys = target.get_field('rotys')[valid_mask]
 
-	print('detections / gt objs: {} / {}'.format(box2d.shape[0], num_gt))
+		print('detections / gt objs: {} / {}'.format(box2d.shape[0], num_gt))
 
 	pred_heatmap = visualize_preds['heat_map']
 	all_heatmap = np.asarray(pred_heatmap[0, 0, ...].cpu())
@@ -205,44 +208,53 @@ def show_image_with_boxes(image, output, target, visualize_preds, vis_scores=Non
 		corners_2d, depth = calib.project_rect_to_image(corners3d)
 		img3 = draw_projected_box3d(img3, corners_2d, cls=ID_TYPE_CONVERSION[clses[i]], color=pred_color, draw_corner=False)
 
-		corners3d_lidar = calib.project_rect_to_velo(corners3d)
-		img4 = draw_bev_box3d(img4, corners3d[np.newaxis, :], thickness=2, color=pred_color, scores=None)
+		#corners3d_lidar = calib.project_rect_to_velo(corners3d)
+		#img4 = draw_bev_box3d(img4, corners3d[np.newaxis, :], thickness=2, color=pred_color, scores=None)
 
 	# plot ground-truth
-	for i in range(num_gt):
-		img2.draw_box(box_coord=gt_boxes[i], edge_color='r')
+	if split != "test":
+		for i in range(num_gt):
+			img2.draw_box(box_coord=gt_boxes[i], edge_color='r')
 
-		# 3d bbox template
-		l, h, w = gt_dims[i]
-		x_corners = [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2]
-		y_corners = [0, 0, 0, 0, -h, -h, -h, -h]
-		z_corners = [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2]
+			# 3d bbox template
+			l, h, w = gt_dims[i]
+			x_corners = [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2]
+			y_corners = [0, 0, 0, 0, -h, -h, -h, -h]
+			z_corners = [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2]
 
-		# rotation matirx
-		roty = gt_rotys[i]
-		R = np.array([[np.cos(roty), 0, np.sin(roty)],
-					  [0, 1, 0],
-					  [-np.sin(roty), 0, np.cos(roty)]])
+			# rotation matirx
+			roty = gt_rotys[i]
+			R = np.array([[np.cos(roty), 0, np.sin(roty)],
+						[0, 1, 0],
+						[-np.sin(roty), 0, np.cos(roty)]])
 
-		corners3d = np.vstack([x_corners, y_corners, z_corners])  # (3, 8)
-		corners3d = np.dot(R, corners3d).T
-		corners3d = corners3d + gt_locs[i].numpy() + np.array([0, h / 2, 0]).reshape(1, 3)
+			corners3d = np.vstack([x_corners, y_corners, z_corners])  # (3, 8)
+			corners3d = np.dot(R, corners3d).T
+			corners3d = corners3d + gt_locs[i].numpy() + np.array([0, h / 2, 0]).reshape(1, 3)
 
-		corners_2d, depth = calib.project_rect_to_image(corners3d)
-		img3 = draw_projected_box3d(img3, corners_2d, color=gt_color, draw_corner=False)
+			corners_2d, depth = calib.project_rect_to_image(corners3d)
+			img3 = draw_projected_box3d(img3, corners_2d, color=gt_color, draw_corner=False)
 
-		corners3d_lidar = calib.project_rect_to_velo(corners3d)
-		img4 = draw_bev_box3d(img4, corners3d[np.newaxis, :], thickness=2, color=gt_color, scores=None)
+			corners3d_lidar = calib.project_rect_to_velo(corners3d)
+			img4 = draw_bev_box3d(img4, corners3d[np.newaxis, :], thickness=2, color=gt_color, scores=None)
 
 	img2 = img2.output.get_image()
 	heat_mixed = img2.astype(np.float32) / 255 + all_heatmap[..., np.newaxis] * np.array([1, 0, 0]).reshape(1, 1, 3)
 	img4 = cv2.resize(img4, (img3.shape[0], img3.shape[0]))
 	stack_img = np.concatenate([img3, img4], axis=1)
 
-	plt.figure(figsize=(12, 8))
-	plt.subplot(211)
-	plt.imshow(all_heatmap); plt.title('heatmap'); plt.axis('off')
-	plt.subplot(212)
-	plt.imshow(stack_img); plt.title('2D/3D boxes'); plt.axis('off')
-	plt.suptitle('Detections')
-	plt.show()
+	new_save_path = "/home/lipengcheng/results/neolix_test"
+	if not os.path.exists(new_save_path):
+		os.makedirs(new_save_path)
+
+	result = os.path.join(new_save_path, image_ids[0] + ".png")
+	img_result = cv2.cvtColor(img3, cv2.COLOR_BGR2RGB)
+	cv2.imwrite(result, img_result)
+
+	# plt.figure(figsize=(12, 8))
+	# plt.subplot(211)
+	# plt.imshow(all_heatmap); plt.title('heatmap'); plt.axis('off')
+	# plt.subplot(212)
+	# plt.imshow(stack_img); plt.title('2D/3D boxes'); plt.axis('off')
+	# plt.suptitle('Detections')
+	# plt.show()
