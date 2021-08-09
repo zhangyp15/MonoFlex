@@ -55,7 +55,6 @@ def build_dataset(cfg, transforms, dataset_catalog, is_train=True):
 
     return [dataset]
 
-
 def make_data_loader(cfg, is_train=True):
     num_gpus = get_world_size()
     

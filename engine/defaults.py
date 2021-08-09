@@ -33,13 +33,12 @@ def default_argument_parser():
         default=None,
     )
     
-    parser.add_argument("--gpu", nargs='+', default=['0'])
-    parser.add_argument("--num_gpus", type=int, default=None, help="number of gpu")
+    parser.add_argument("--num_gpus", type=int, default=1, help="number of gpu")
     parser.add_argument("--batch_size", type=int, default=8, help="number of batch_size")
     parser.add_argument("--num_work", type=int, default=8, help="number of workers for dataloader")
     parser.add_argument("--output", type=str, default=None)
 
-    parser.add_argument("--vis_thre", type=float, default=-1, help="threshold for visualize results of detection")
+    parser.add_argument("--vis_thre", type=float, default=0.25, help="threshold for visualize results of detection")
     parser.add_argument("--num-machines", type=int, default=1)
     parser.add_argument(
         "--machine-rank", type=int, default=0, help="the rank of this machine (unique per machine)"

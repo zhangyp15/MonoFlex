@@ -20,7 +20,7 @@ def get_model_params(model, cfg):
 		key_lr = [base_lr]
 		# bias learning rate 
 		if "bias" in key: key_lr.append(cfg.SOLVER.BASE_LR * cfg.SOLVER.BIAS_LR_FACTOR)
-		params += [{"params": [value], "lr": max(key_lr)}]	
+		params += [{"params": [value], "lr": max(key_lr)}]
 
 	return params
 

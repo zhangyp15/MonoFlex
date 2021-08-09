@@ -228,6 +228,7 @@ class KITTIDataset(Dataset):
 		return Image.fromarray(ret_img.astype(np.uint8)), pad_size
 
 	def __getitem__(self, idx):
+		
 		if idx >= self.num_samples:
 			# utilize right color image
 			idx = idx % self.num_samples
@@ -370,10 +371,7 @@ class KITTIDataset(Dataset):
 
 			# filter some unreasonable annotations
 			if self.filter_annos:
-				if len(self.filter_params) > 2 and self.filter_params[-1] == 'level':
-					if obj.level == -1: continue
-				else:
-					if float_truncation >= self.filter_params[0] and (box2d[2:] - box2d[:2]).min() <= self.filter_params[1]: continue
+				if float_truncation >= self.filter_params[0] and (box2d[2:] - box2d[:2]).min() <= self.filter_params[1]: continue
 
 			# project 3d location to the image plane
 			proj_center, depth = calib.project_rect_to_image(locs.reshape(-1, 3))
@@ -412,7 +410,6 @@ class KITTIDataset(Dataset):
 			# center, diag-02, diag-13
 			keypoints_depth_valid = np.stack((keypoints_visible[[8, 9]].all(), keypoints_visible[[0, 2, 4, 6]].all(), keypoints_visible[[1, 3, 5, 7]].all()))
 
-			# 真香
 			if self.use_modify_keypoint_visible:
 				keypoints_visible = np.append(np.tile(keypoints_visible[:4] | keypoints_visible[4:8], 2), np.tile(keypoints_visible[8] | keypoints_visible[9], 2))
 				keypoints_depth_valid = np.stack((keypoints_visible[[8, 9]].all(), keypoints_visible[[0, 2, 4, 6]].all(), keypoints_visible[[1, 3, 5, 7]].all()))

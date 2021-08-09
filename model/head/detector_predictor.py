@@ -85,8 +85,7 @@ class _predictor(nn.Module):
                 output_head = nn.Conv2d(self.head_conv, key_channel, kernel_size=1, padding=1 // 2, bias=True)
 
                 if key.find('uncertainty') >= 0 and cfg.MODEL.HEAD.UNCERTAINTY_INIT:
-                    # default gain = 1
-                    torch.nn.init.xavier_normal_(output_head.weight, gain=1e-4)
+                    torch.nn.init.xavier_normal_(output_head.weight, gain=0.01)
                 
                 # since the edge fusion is applied to the offset branch, we should save the index of this branch
                 if key == '3d_offset': self.offset_index = [idx, key_index]
@@ -103,11 +102,11 @@ class _predictor(nn.Module):
         # edge feature fusion
         self.enable_edge_fusion = cfg.MODEL.HEAD.ENABLE_EDGE_FUSION
         self.edge_fusion_kernel_size = cfg.MODEL.HEAD.EDGE_FUSION_KERNEL_SIZE
+        self.edge_fusion_relu = cfg.MODEL.HEAD.EDGE_FUSION_RELU
 
         if self.enable_edge_fusion:
             trunc_norm_func = nn.BatchNorm1d if cfg.MODEL.HEAD.EDGE_FUSION_NORM == 'BN' else nn.Identity
-            trunc_activision_func = nn.Identity()
-            # trunc_activision_func = nn.ReLU(inplace=True)
+            trunc_activision_func = nn.ReLU(inplace=True) if self.edge_fusion_relu else nn.Identity()
             
             self.trunc_heatmap_conv = nn.Sequential(
                 nn.Conv1d(self.head_conv, self.head_conv, kernel_size=self.edge_fusion_kernel_size, padding=self.edge_fusion_kernel_size // 2, padding_mode='replicate'),
@@ -168,4 +167,3 @@ class _predictor(nn.Module):
 def make_predictor(cfg, in_channels):
     func = registry.PREDICTOR[cfg.MODEL.HEAD.PREDICTOR]
     return func(cfg, in_channels)
-

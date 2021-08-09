@@ -54,6 +54,7 @@ class Inverse_Sigmoid_Loss(nn.Module):
 	def forward(self, prediction, target, weight=None):
 		trans_prediction = 1 / torch.sigmoid(target) - 1
 		loss = F.l1_loss(trans_prediction, target, reduction='none')
+		
 		if weight is not None:
 			loss = loss * weight
 

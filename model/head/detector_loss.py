@@ -40,7 +40,6 @@ class Loss_Computation():
 		loss_types = cfg.MODEL.HEAD.LOSS_TYPE
 		self.cls_loss_fnc = FocalLoss(cfg.MODEL.HEAD.LOSS_PENALTY_ALPHA, cfg.MODEL.HEAD.LOSS_BETA) # penalty-reduced focal loss
 		self.iou_loss = IOULoss(loss_type=loss_types[2]) # iou loss for 2D detection
-		self.bce_loss = torch.nn.BCEWithLogitsLoss(reduction='none') # binary cross entropy for IoU prediction
 
 		# depth loss
 		if loss_types[3] == 'berhu': self.depth_loss = Berhu_Loss()
@@ -70,18 +69,17 @@ class Loss_Computation():
 		self.separate_trunc_offset = 'trunc_offset_loss' in self.loss_keys
 		
 		self.pred_direct_depth = 'depth' in self.key2channel.keys
-		self.compute_keypoint_corner = 'corner_offset' in self.key2channel.keys
 		self.depth_with_uncertainty = 'depth_uncertainty' in self.key2channel.keys
+		self.compute_keypoint_corner = 'corner_offset' in self.key2channel.keys
 		self.corner_with_uncertainty = 'corner_uncertainty' in self.key2channel.keys
-		
-		self.uncertainty_weight = cfg.MODEL.HEAD.UNCERTAINTY_WEIGHT
+
+		self.uncertainty_weight = cfg.MODEL.HEAD.UNCERTAINTY_WEIGHT # 1.0
 		self.keypoint_xy_weights = cfg.MODEL.HEAD.KEYPOINT_XY_WEIGHT # [1, 1]
 		self.keypoint_norm_factor = cfg.MODEL.HEAD.KEYPOINT_NORM_FACTOR # 1.0
 		self.modify_invalid_keypoint_depths = cfg.MODEL.HEAD.MODIFY_INVALID_KEYPOINT_DEPTH
 
 		# depth used to compute 8 corners
 		self.corner_loss_depth = cfg.MODEL.HEAD.CORNER_LOSS_DEPTH
-		self.smart_corner_loss = cfg.MODEL.HEAD.SMART_CORNER_LOSS
 		self.eps = 1e-5
 
 	def prepare_targets(self, targets):
@@ -92,17 +90,14 @@ class Loss_Computation():
 		# 2d detection
 		target_centers = torch.stack([t.get_field("target_centers") for t in targets])
 		bboxes = torch.stack([t.get_field("2d_bboxes") for t in targets])
-
 		# 3d detection
 		keypoints = torch.stack([t.get_field("keypoints") for t in targets])
 		keypoints_depth_mask = torch.stack([t.get_field("keypoints_depth_mask") for t in targets])
-
 		dimensions = torch.stack([t.get_field("dimensions") for t in targets])
 		locations = torch.stack([t.get_field("locations") for t in targets])
 		rotys = torch.stack([t.get_field("rotys") for t in targets])
 		alphas = torch.stack([t.get_field("alphas") for t in targets])
 		orientations = torch.stack([t.get_field("orientations") for t in targets])
-
 		# utils
 		pad_size = torch.stack([t.get_field("pad_size") for t in targets])
 		calibs = [t.get_field("calib") for t in targets]
@@ -112,9 +107,9 @@ class Loss_Computation():
 		trunc_mask = torch.stack([t.get_field("trunc_mask") for t in targets])
 
 		return_dict = dict(cls_ids=cls_ids, target_centers=target_centers, bboxes=bboxes, keypoints=keypoints, dimensions=dimensions,
-					locations=locations, rotys=rotys, alphas=alphas, calib=calibs, pad_size=pad_size, reg_mask=reg_mask, reg_weight=reg_weight,
-					offset_3D=offset_3D, ori_imgs=ori_imgs, trunc_mask=trunc_mask, orientations=orientations, keypoints_depth_mask=keypoints_depth_mask,
-				)
+			locations=locations, rotys=rotys, alphas=alphas, calib=calibs, pad_size=pad_size, reg_mask=reg_mask, reg_weight=reg_weight,
+			offset_3D=offset_3D, ori_imgs=ori_imgs, trunc_mask=trunc_mask, orientations=orientations, keypoints_depth_mask=keypoints_depth_mask,
+		)
 
 		return heatmaps, return_dict
 
@@ -192,8 +187,14 @@ class Loss_Computation():
 
 		# predict the uncertainty of depth regression
 		if self.depth_with_uncertainty:
-			preds['depth_uncertainty'] = torch.clamp(pred_regression_pois_3D[:, self.key2channel('depth_uncertainty')].squeeze(-1), 
-													min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+			preds['depth_uncertainty'] = pred_regression_pois_3D[:, self.key2channel('depth_uncertainty')].squeeze(-1)
+			
+			if self.uncertainty_range is not None:
+				preds['depth_uncertainty'] = torch.clamp(preds['depth_uncertainty'], min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+
+			# else:
+			# 	print('depth_uncertainty: {:.2f} +/- {:.2f}'.format(
+			# 		preds['depth_uncertainty'].mean().item(), preds['depth_uncertainty'].std().item()))
 
 		# predict the keypoints
 		if self.compute_keypoint_corner:
@@ -218,8 +219,14 @@ class Loss_Computation():
 
 		# predict the uncertainties of the solved depths from groups of keypoints
 		if self.corner_with_uncertainty:
-			preds['corner_offset_uncertainty'] = torch.clamp(pred_regression_pois_3D[:, self.key2channel('corner_uncertainty')], 
-												min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+			preds['corner_offset_uncertainty'] = pred_regression_pois_3D[:, self.key2channel('corner_uncertainty')]
+
+			if self.uncertainty_range is not None:
+				preds['corner_offset_uncertainty'] = torch.clamp(preds['corner_offset_uncertainty'], min=self.uncertainty_range[0], max=self.uncertainty_range[1])
+
+			# else:
+			# 	print('keypoint depth uncertainty: {:.2f} +/- {:.2f}'.format(
+			# 		preds['corner_offset_uncertainty'].mean().item(), preds['corner_offset_uncertainty'].std().item()))
 
 		# compute the corners of the predicted 3D bounding boxes for the corner loss
 		if self.corner_loss_depth == 'direct':
@@ -294,7 +301,7 @@ class Loss_Computation():
 				
 				if self.depth_with_uncertainty:
 					depth_3D_loss = depth_3D_loss * torch.exp(- preds['depth_uncertainty']) + \
-							preds['depth_uncertainty'] * self.loss_weights['depth_loss'] * self.uncertainty_weight
+							preds['depth_uncertainty'] * self.loss_weights['depth_loss']
 				
 				depth_3D_loss = depth_3D_loss.mean()
 				
@@ -363,7 +370,7 @@ class Loss_Computation():
 						invalid_uncertainty = pred_keypoint_depth_uncertainty[~keypoints_depth_mask]
 
 						valid_keypoint_depth_loss = valid_keypoint_depth_loss * torch.exp(- valid_uncertainty) + \
-												self.loss_weights['keypoint_depth_loss'] * self.uncertainty_weight * valid_uncertainty
+												self.loss_weights['keypoint_depth_loss'] * valid_uncertainty
 
 						invalid_keypoint_depth_loss = invalid_keypoint_depth_loss * torch.exp(- invalid_uncertainty)
 
@@ -435,7 +442,7 @@ class Loss_Computation():
 			loss_dict['offset_loss'] = offset_3D_loss
 			loss_dict['trunc_offset_loss'] = trunc_offset_loss
 		else:
-			loss_dict['offset_loss'] = offset_3D_loss / num_reg_obj
+			loss_dict['offset_loss'] = offset_3D_loss
 
 		if self.compute_corner_loss:
 			loss_dict['corner_loss'] = corner_3D_loss
@@ -464,15 +471,17 @@ class Loss_Computation():
 
 		if self.compute_keypoint_depth_loss:
 			loss_dict['keypoint_depth_loss'] = keypoint_depth_loss
+			log_loss_dict['keypoint_depth_loss'] = log_valid_keypoint_depth_loss.item()
 
 		if self.compute_weighted_depth_loss:
 			loss_dict['weighted_avg_depth_loss'] = soft_depth_loss
 
-		# copypaste :D
+		# loss_dict ===> log_loss_dict
 		for key, value in loss_dict.items():
 			if key not in log_loss_dict:
 				log_loss_dict[key] = value.item()
 
+		# stop when the loss has NaN or Inf
 		for v in loss_dict.values():
 			if torch.isnan(v).sum() > 0:
 				pdb.set_trace()
