@@ -13,8 +13,7 @@ from config import TYPE_ID_CONVERSION
 from shapely.geometry import Polygon
 from config import cfg
 from utils.visualizer import Visualizer
-from data.datasets.kitti_utils import draw_projected_box3d, \
-	draw_box3d_on_top, init_bev_image, draw_bev_box3d
+from data.datasets.kitti_utils import draw_projected_box3d, draw_box3d_on_top, init_bev_image, draw_bev_box3d
 
 keypoint_colors = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156], 
 				[190, 153, 153], [153, 153, 153], [250, 170, 30], [220, 220, 0], 
@@ -74,7 +73,7 @@ def box3d_to_corners(locs, dims, roty):
 
 
 # visualize for test-set
-def show_image_with_boxes_test(image, output, target, visualize_preds):
+def show_image_with_boxes_test(image, output, target, visualize_preds,image_ids):
 	# output Tensor:
 	# clses, pred_alphas, pred_box2d, pred_dimensions, pred_locations, pred_rotys, scores
 	image = image.numpy().astype(np.uint8)
@@ -132,18 +131,21 @@ def show_image_with_boxes_test(image, output, target, visualize_preds):
 		edge_depth = [edge_depth[[0, 3]].mean(), edge_depth[[1, 2]].mean()]
 		# print(locs[i, -1], center_depth, edge_depth)
 
-		for i in range(keypoint_i.shape[0]):
-			cv2.circle(img_keypoint, tuple(keypoint_i[i]), 4, keypoint_colors[i], -1)
+		# for i in range(keypoint_i.shape[0]):
+		# 	cv2.circle(img_keypoint, tuple(keypoint_i[i]), 4, keypoint_colors[i], -1)
 
 	img2 = img2.output.get_image()
 	heat_mixed = img2.astype(np.float32) / 255 + all_heatmap[..., np.newaxis] * np.array([1, 0, 0]).reshape(1, 1, 3)
 	img3 = img3.astype(np.float32) / 255
 	stacked_img = np.vstack((heat_mixed, img3))
 
-	plt.figure()
-	plt.imshow(stacked_img)
-	plt.title('2D and 3D results')
-	plt.show()
+	new_save_path = "/home/lipengcheng/results/neolix_test"
+	if not os.path.exists(new_save_path):
+		os.makedirs(new_save_path)
+
+	result = os.path.join(new_save_path, image_ids[0] + ".png")
+	#img_result = cv2.cvtColor(stacked_img, cv2.COLOR_BGR2RGB)
+	cv2.imwrite(result, stacked_img)
 
 # heatmap and 3D detections
 def show_image_with_boxes(image, output, target, visualize_preds, image_ids, vis_scores=None):
@@ -208,10 +210,11 @@ def show_image_with_boxes(image, output, target, visualize_preds, image_ids, vis
 		corners_2d, depth = calib.project_rect_to_image(corners3d)
 		img3 = draw_projected_box3d(img3, corners_2d, cls=ID_TYPE_CONVERSION[clses[i]], color=pred_color, draw_corner=False)
 
-		#corners3d_lidar = calib.project_rect_to_velo(corners3d)
-		#img4 = draw_bev_box3d(img4, corners3d[np.newaxis, :], thickness=2, color=pred_color, scores=None)
+		corners3d_lidar = calib.project_rect_to_velo(corners3d)
+		img4 = draw_bev_box3d(img4, corners3d[np.newaxis, :], thickness=2, color=pred_color, scores=None)
 
 	# plot ground-truth
+	
 	if split != "test":
 		for i in range(num_gt):
 			img2.draw_box(box_coord=gt_boxes[i], edge_color='r')
@@ -243,14 +246,14 @@ def show_image_with_boxes(image, output, target, visualize_preds, image_ids, vis
 	img4 = cv2.resize(img4, (img3.shape[0], img3.shape[0]))
 	stack_img = np.concatenate([img3, img4], axis=1)
 
+
 	new_save_path = "/home/lipengcheng/results/neolix_test"
 	if not os.path.exists(new_save_path):
 		os.makedirs(new_save_path)
 
 	result = os.path.join(new_save_path, image_ids[0] + ".png")
-	img_result = cv2.cvtColor(img3, cv2.COLOR_BGR2RGB)
+	img_result = cv2.cvtColor(stack_img, cv2.COLOR_BGR2RGB)
 	cv2.imwrite(result, img_result)
-
 	# plt.figure(figsize=(12, 8))
 	# plt.subplot(211)
 	# plt.imshow(all_heatmap); plt.title('heatmap'); plt.axis('off')

@@ -1,18 +1,13 @@
 import os
 
 class DatasetCatalog():
-    #DATA_DIR = "/opt/data1/zyp/"
-    DATA_DIR = "/home/lipengcheng/data"
-    #DATA_DIR = "/disk2/llt/xinshiqi-data"
-
-    
-
+    DATA_DIR = "/nfs/neolix_data1/OpenSource_dataset/lidar_object_detection/Kitti/kitti/"
     DATASETS = {
         "kitti_train": {
             "root": "training/",
         },
         "kitti_test": {
-            "root": "neolix/",
+            "root": "testing/",
         },
 
     }

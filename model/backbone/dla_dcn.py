@@ -14,17 +14,18 @@ from torch import nn
 import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from model.backbone.DCNv2.dcn_v2 import DCN
-
+from model.backbone.HGFilters import HGFilter
 BN_MOMENTUM = 0.1
 
 def build_backbone(cfg):
-
-    model = DLASeg(base_name=cfg.MODEL.BACKBONE.CONV_BODY,
-                pretrained=cfg.MODEL.PRETRAIN,
-                down_ratio=cfg.MODEL.BACKBONE.DOWN_RATIO,
-                last_level=5,
-            )
-    
+    if cfg is not None :
+        model = DLASeg(base_name=cfg.MODEL.BACKBONE.CONV_BODY,
+                    pretrained=cfg.MODEL.PRETRAIN,
+                    down_ratio=cfg.MODEL.BACKBONE.DOWN_RATIO,
+                    last_level=5,
+                )
+    else:
+        model = HGFilter()
     return model
 
 class DLASeg(nn.Module):
@@ -388,8 +389,8 @@ class DeformConv(nn.Module):
             nn.BatchNorm2d(cho, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=True)
         )
-        self.conv = DCN(chi, cho, kernel_size=(3,3), stride=1, padding=1, dilation=1, deformable_groups=1)
-
+        #self.conv = DCN(chi, cho, kernel_size=(3,3), stride=1, padding=1, dilation=1, deformable_groups=1)
+        self.conv = nn.Conv2d(chi, cho, kernel_size=(3,3), stride=1, padding=1, dilation=1)
     def forward(self, x):
         x = self.conv(x)
         x = self.actf(x)

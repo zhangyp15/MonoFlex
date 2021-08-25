@@ -51,6 +51,10 @@ Please download [KITTI dataset](http://www.cvlibs.net/datasets/kitti/eval_object
 
 Then modify the paths in config/paths_catalog.py according to your data path.
 
+before training 
+change kitit data folder path in config/catalog.py
+if you want to change save checkpoint folder, edit in run/monoflex.ymal
+
 ## Training & Evaluation
 
 Training with one GPU. (TODO: The multi-GPU training will be further tested.)

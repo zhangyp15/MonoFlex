@@ -22,7 +22,7 @@ INPUT:
   KEYPOINT_VISIBLE_MODIFY: True
 
 MODEL:
-  INPLACE_ABN: True
+  INPLACE_ABN: False
   HEAD:
     REGRESSION_HEADS: [['2d_dim'], ['3d_offset'], ['corner_offset'], ['corner_uncertainty'], ['3d_dim'], ['ori_cls', 'ori_offset'], ['depth'], ['depth_uncertainty']]
     REGRESSION_CHANNELS: [[4, ], [2, ], [20], [3], [3, ], [8, 8], [1, ], [1, ]]
@@ -74,7 +74,7 @@ SOLVER:
   MAX_EPOCHS: 100
   DECAY_EPOCH_STEPS: [80, 90]
 
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 16
   EVAL_INTERVAL: 1000
 
 TEST:

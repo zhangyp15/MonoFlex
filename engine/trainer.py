@@ -164,7 +164,11 @@ def do_train(
 
 		if iteration % cfg.SOLVER.SAVE_CHECKPOINT_INTERVAL == 0:
 			logger.info('iteration = {}, saving checkpoint ...'.format(iteration))
+			cur_epoch = iteration // arguments["iter_per_epoch"]
+			
 			if comm.get_rank() == 0:
+				if cur_epoch >=40 and cur_epoch%2 ==0:
+					checkpointer.save("model_checkpoint_epoch_{}".format(str(cur_epoch)), **arguments)
 				checkpointer.save("model_checkpoint", **arguments)
 			
 		if iteration == max_iter and comm.get_rank() == 0:
