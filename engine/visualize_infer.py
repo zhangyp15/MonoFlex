@@ -252,7 +252,7 @@ def show_image_with_boxes(image, output, target, visualize_preds, image_ids, vis
 		os.makedirs(new_save_path)
 
 	result = os.path.join(new_save_path, image_ids[0] + ".png")
-	img_result = cv2.cvtColor(stack_img, cv2.COLOR_BGR2RGB)
+	img_result = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)#stack_img
 	cv2.imwrite(result, img_result)
 	# plt.figure(figsize=(12, 8))
 	# plt.subplot(211)

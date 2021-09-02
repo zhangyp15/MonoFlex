@@ -101,7 +101,13 @@ def make_data_loader(cfg, is_train=True):
 
     data_loaders = []
     for dataset in datasets:
-        sampler = samplers.TrainingSampler(len(dataset))
+        if cfg.DATALOADER.WEIGHT_SAMPLE:
+            sampler = samplers.KittiRepeatFactorTrainingSampler(dataset, 1.0)
+        else :
+            sampler = samplers.TrainingSampler(len(dataset))
+        # import pdb
+        # pdb.set_trace()
+
         batch_sampler = torch.utils.data.sampler.BatchSampler(
             sampler, images_per_gpu, drop_last=True
         )

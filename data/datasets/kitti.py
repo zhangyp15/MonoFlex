@@ -3,12 +3,13 @@ import csv
 import logging
 import random
 import pdb
+import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import Dataset
-
+from transforms import random_distort
 import matplotlib.pyplot as plt
 
 from model.heatmap_coder import (
@@ -261,6 +262,8 @@ class KITTIDataset(Dataset):
 		else:
 			# utilize left color image
 			img = self.get_image(idx)
+			if self.is_train :
+				img = random_distort(img) # add image color noise 
 			calib = self.get_calibration(idx)
 			objs = [] if self.split == 'test' else self.get_label_objects(idx)
 
@@ -270,7 +273,7 @@ class KITTIDataset(Dataset):
 		objs = self.filtrate_objects(objs) # remove objects of irrelevant classes
 		 
 		# random horizontal flip
-		if self.augmentation is not None:
+		if self.augmentation is not None and self.is_train:
 			img, objs, calib = self.augmentation(img, objs, calib)
 
 		# pad image

@@ -105,10 +105,17 @@ def do_train(
 
 		images = data["images"].to(device)
 		targets = [target.to(device) for target in data["targets"]]
-
+		
 		loss_dict, log_loss_dict = model(images, targets)
-		losses = sum(loss for loss in loss_dict.values())
-
+		weights = [3,1,1,1,1,1,1,1,1,1,1]
+		#losses = sum(loss*weights[id] for id,loss in enumerate(loss_dict.values()))
+		cur_epoch = iteration // arguments["iter_per_epoch"]
+		if cur_epoch >45:
+			losses = sum(loss*weights[id] for id,loss in enumerate(loss_dict.values()))
+		else:
+			losses = sum(loss for loss in loss_dict.values())
+		#losses = sum(loss for loss in loss_dict.values())
+		
 		# reduce losses over all GPUs for logging purposes
 		log_losses_reduced = sum(loss for key, loss in log_loss_dict.items() if key.find('loss') >= 0)
 		meters.update(loss=log_losses_reduced, **log_loss_dict)

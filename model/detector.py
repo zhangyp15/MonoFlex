@@ -28,8 +28,9 @@ class KeypointDetector(nn.Module):
             raise ValueError("In training mode, targets should be passed")
         
         images = to_image_list(images)
-        features = self.backbone(images.tensors)
 
+        features = self.backbone(images.tensors)
+       
         if self.training:
             loss_dict, log_loss_dict = self.heads(features, targets)
             return loss_dict, log_loss_dict

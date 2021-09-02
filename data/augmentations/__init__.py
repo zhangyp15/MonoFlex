@@ -3,12 +3,13 @@ import numpy as np
 
 from .augmentations import (
     RandomHorizontallyFlip,
+    RandomAffineCrop,
     Compose,
 )
 
 from config import cfg
 
-aug_list = [RandomHorizontallyFlip]
+aug_list = [RandomHorizontallyFlip,RandomAffineCrop]
                     
 logger = logging.getLogger("monoflex.augmentations")
 

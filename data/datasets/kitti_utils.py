@@ -256,6 +256,35 @@ class Calibration(object):
         data["P2"] = cam2cam["P_rect_02"]
         return data
 
+    # change cx cy
+    def changeNewCenter(self, center_list, transMat):
+        center_list.append(1.0)
+        newCoord = np.matmul(transMat, np.array(center_list))
+        return newCoord
+    # change fx fy
+    def changeFxFy(self, transMat):
+        self.P[0, 0] = self.P[0, 0] * transMat[0, 0]
+        self.P[1, 1] = self.P[1, 1] * transMat[1, 1]
+
+    def matAndUpdate(self, transMat):
+        
+        center_list = [self.c_u, self.c_v]
+        newCenter = self.changeNewCenter(center_list, transMat)
+        
+        self.P[0, 2] = newCenter[0]
+        self.P[1, 2] = newCenter[1]
+        # change fx fy
+        self.changeFxFy(transMat)
+
+        #print(self.P)
+        # Camera intrinsics and extrinsics
+        self.c_u = self.P[0, 2]
+        self.c_v = self.P[1, 2]
+        self.f_u = self.P[0, 0]
+        self.f_v = self.P[1, 1]
+        self.b_x = self.P[0, 3] / (-self.f_u)  # relative
+        self.b_y = self.P[1, 3] / (-self.f_v)
+
     def cart2hom(self, pts_3d):
         """ Input: nx3 points in Cartesian
             Oupput: nx4 points in Homogeneous by pending 1
